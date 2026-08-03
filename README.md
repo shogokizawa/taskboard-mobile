@@ -2,26 +2,22 @@
 
 既存Webアプリ [`taskboard`](../taskboard) のAndroid版。React Native (Expo) 製のカンバン式タスク管理アプリ。
 
-## ⚠️ 先に読むこと：このパスではビルドできない
+## ⚠️ このプロジェクトを日本語を含むパスへ置かないこと
 
 この端末の **Node 22.13.1 は、非ASCII文字を含むパスから `require()` すると
-アクセス違反 (0xC0000005) でクラッシュする**。プロジェクトが
-`C:\Users\shogo\ドキュメント\...` に置かれているため、`npx expo start` も `tsc` も落ちる。
+アクセス違反 (0xC0000005) でクラッシュする**。当初 `C:\Users\shogo\ドキュメント\Projects\`
+配下に作ったところ `npx expo` も `tsc` も起動できなかったため、
+`C:\Projects\taskboard-mobile` へ移動してある。
 
 再現：
 
 ```powershell
-# ASCIIパス → OK / 日本語を含むパス → segfault
-node -e "require('./node_modules/ms')"
+node -e "require('C:/Users/shogo/ドキュメント/なにか/node_modules/ms')"  # segfault
+node -e "require('C:/Projects/taskboard-mobile/node_modules/ms')"        # OK
 ```
 
-対処（どちらか）：
-
-1. **プロジェクトをASCIIパスへ移す**（推奨・すぐ効く）
-   例：`C:\Projects\taskboard-mobile`
-2. **Nodeを更新する** — 22.14 以降、または最新のLTSへ
-
-`npm install` だけは動く（npm自身は `C:\Program Files\nodejs` から読み込まれるため）。
+Nodeを 22.14 以降（または最新のLTS）へ更新すれば解消するはずだが、
+未検証なのでASCIIパスのまま運用するのが安全。
 
 ## セットアップ
 
@@ -109,6 +105,4 @@ Web版とはモデルが非互換（Web版は `status: 'todo'|...` のリテラ�
 - react-native-reanimated 4.5.1 + react-native-gesture-handler 2.32
 - @react-native-async-storage/async-storage 2.2.0
 
-`npx expo install` はこの端末では上記のNodeの問題で動かないため、
-依存は `node_modules/expo/bundledNativeModules.json` のバージョンに
-合わせて `npm install` で直接固定してある。
+バージョンはExpo SDK 57の推奨に揃えてある（`npx expo install --check` で確認済み）。
