@@ -4,14 +4,17 @@ import { DarkTheme, NavigationContainer, type Theme } from '@react-navigation/na
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { RootStackParamList, TabParamList } from './src/navigation/types';
 import { AddTaskScreen } from './src/screens/AddTaskScreen';
 import { KanbanScreen } from './src/screens/KanbanScreen';
+import { LoginScreen } from './src/screens/LoginScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { TaskDetailScreen } from './src/screens/TaskDetailScreen';
+import { AuthProvider, useAuth } from './src/store/AuthContext';
 import { BoardProvider } from './src/store/BoardContext';
 import { colors } from './src/theme';
 
@@ -74,37 +77,68 @@ function Tabs() {
   );
 }
 
+function AppShell() {
+  const { ready, session } = useAuth();
+
+  if (!ready) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator color={colors.accent} />
+      </View>
+    );
+  }
+
+  if (!session) {
+    return <LoginScreen />;
+  }
+
+  return (
+    <BoardProvider>
+      <NavigationContainer theme={navigationTheme}>
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: { backgroundColor: colors.surface },
+            headerTitleStyle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
+            headerTintColor: colors.accent,
+            headerShadowVisible: false,
+            contentStyle: { backgroundColor: colors.bg },
+          }}
+        >
+          <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="TaskDetail"
+            component={TaskDetailScreen}
+            options={{ title: 'タスクの詳細' }}
+          />
+          <Stack.Screen
+            name="AddTask"
+            component={AddTaskScreen}
+            options={{ title: '新しいタスク', presentation: 'modal' }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </BoardProvider>
+  );
+}
+
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <BoardProvider>
-          <NavigationContainer theme={navigationTheme}>
-            <StatusBar style="light" />
-            <Stack.Navigator
-              screenOptions={{
-                headerStyle: { backgroundColor: colors.surface },
-                headerTitleStyle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
-                headerTintColor: colors.accent,
-                headerShadowVisible: false,
-                contentStyle: { backgroundColor: colors.bg },
-              }}
-            >
-              <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
-              <Stack.Screen
-                name="TaskDetail"
-                component={TaskDetailScreen}
-                options={{ title: 'タスクの詳細' }}
-              />
-              <Stack.Screen
-                name="AddTask"
-                component={AddTaskScreen}
-                options={{ title: '新しいタスク', presentation: 'modal' }}
-              />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </BoardProvider>
+        <StatusBar style="light" />
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bg,
+  },
+});

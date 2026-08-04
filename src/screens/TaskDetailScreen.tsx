@@ -18,6 +18,7 @@ import { TagChip } from '../components/TagChip';
 import { Button, Field, Section } from '../components/ui';
 import {
   addSubTask,
+  canAddChildAt,
   countSubtasks,
   createSubTask,
   flattenSubTasks,
@@ -223,6 +224,7 @@ export function TaskDetailScreen({ navigation, route }: Props) {
                   key={node.id}
                   node={node}
                   depth={depth}
+                  canAddChild={canAddChildAt(depth)}
                   onToggle={() => setSubtasks((prev) => toggleSubTask(prev, node.id))}
                   onChangeTitle={(value) =>
                     setSubtasks((prev) => updateSubTask(prev, node.id, { title: value }))

@@ -1,9 +1,7 @@
 /**
- * データモデル。
- *
+ * データモデル。Supabase の statuses / tags / tasks テーブルにそのままマッピングする。
  * ステータス・タグを可変（ユーザーが追加/削除できる）にした構成。
- * `user_id` はローカル保存では常に null。将来Supabaseへ移行したときに
- * そのままカラムへマッピングできるようフィールドだけ用意してある。
+ * `user_id` は行の所有者。DB側で auth.uid() を既定値にし、RLSで本人の行のみに絞る。
  */
 
 export type Tag = {
@@ -27,7 +25,7 @@ export type SubTask = {
   id: string;
   title: string;
   completed: boolean;
-  /** 再帰ツリー。ネスト段数の制限なし */
+  /** 再帰ツリー。最大ネスト段数は MAX_SUBTASK_DEPTH（lib/subtasks.ts） */
   children: SubTask[];
 };
 

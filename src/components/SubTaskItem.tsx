@@ -11,6 +11,8 @@ type Props = {
   node: SubTask;
   /** ネストの深さ。0 がトップレベル */
   depth: number;
+  /** これ以上子サブタスクを追加できるか */
+  canAddChild: boolean;
   onToggle: () => void;
   onChangeTitle: (title: string) => void;
   onAddChild: () => void;
@@ -20,6 +22,7 @@ type Props = {
 export function SubTaskItem({
   node,
   depth,
+  canAddChild,
   onToggle,
   onChangeTitle,
   onAddChild,
@@ -55,12 +58,18 @@ export function SubTaskItem({
 
       <Pressable
         onPress={onAddChild}
+        disabled={!canAddChild}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel="子サブタスクを追加"
-        style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+        accessibilityState={{ disabled: !canAddChild }}
+        style={({ pressed }) => [styles.iconButton, pressed && canAddChild && styles.pressed]}
       >
-        <Ionicons name="add" size={18} color={colors.textSecondary} />
+        <Ionicons
+          name="add"
+          size={18}
+          color={canAddChild ? colors.textSecondary : colors.textMuted}
+        />
       </Pressable>
 
       <Pressable

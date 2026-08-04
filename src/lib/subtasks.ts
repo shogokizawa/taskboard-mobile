@@ -3,6 +3,9 @@ import { uid } from './uid';
 
 export type SubTaskCounts = { total: number; done: number };
 
+/** サブタスクの最大ネスト段数（トップレベルを1段目として数える） */
+export const MAX_SUBTASK_DEPTH = 5;
+
 /** ネストした子孫も含めて数える */
 export function countSubtasks(subtasks: SubTask[]): SubTaskCounts {
   let total = 0;
@@ -56,18 +59,34 @@ function setAllCompleted(subtasks: SubTask[], completed: boolean): SubTask[] {
   }));
 }
 
-/** parentId が null ならトップレベルへ追加 */
+/** parentId が null ならトップレベルへ追加。MAX_SUBTASK_DEPTH を超える追加は無視する */
 export function addSubTask(
   subtasks: SubTask[],
   parentId: string | null,
   node: SubTask,
 ): SubTask[] {
   if (parentId === null) return [...subtasks, node];
-  return subtasks.map((st) =>
-    st.id === parentId
-      ? { ...st, children: [...st.children, node] }
-      : { ...st, children: addSubTask(st.children, parentId, node) },
-  );
+  return addSubTaskAt(subtasks, parentId, node, 0);
+}
+
+function addSubTaskAt(
+  subtasks: SubTask[],
+  parentId: string,
+  node: SubTask,
+  depth: number,
+): SubTask[] {
+  return subtasks.map((st) => {
+    if (st.id === parentId) {
+      if (depth + 1 >= MAX_SUBTASK_DEPTH) return st;
+      return { ...st, children: [...st.children, node] };
+    }
+    return { ...st, children: addSubTaskAt(st.children, parentId, node, depth + 1) };
+  });
+}
+
+/** そのノードにこれ以上子を追加できるか（現在の depth は 0 始まり） */
+export function canAddChildAt(depth: number): boolean {
+  return depth + 1 < MAX_SUBTASK_DEPTH;
 }
 
 /** 子孫ごと削除する */

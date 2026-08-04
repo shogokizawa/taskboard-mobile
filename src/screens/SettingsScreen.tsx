@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusPickerSheet } from '../components/StatusPickerSheet';
 import { Button, Section } from '../components/ui';
 import { countSubtasks } from '../lib/subtasks';
+import { useAuth } from '../store/AuthContext';
 import { useBoard } from '../store/BoardContext';
 import { MIN_TOUCH, colors, radius, spacing, withAlpha } from '../theme';
 
@@ -39,6 +40,7 @@ export function SettingsScreen() {
     deleteTag,
     clearAll,
   } = useBoard();
+  const { session, signOut } = useAuth();
 
   /** 名前の編集中バッファ。確定するまでは保存しない */
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -154,11 +156,15 @@ export function SettingsScreen() {
           />
           <InfoRow label="ステータス" value={`${statuses.length} 件`} />
           <InfoRow label="タグ" value={`${tags.length} 件`} />
-          <InfoRow label="保存先" value="この端末内" last />
+          <InfoRow label="保存先" value="Supabase（クラウド）" last />
         </View>
-        <Text style={styles.note}>
-          データは端末内にのみ保存されます。アプリを削除すると消えるため、大切な内容は別途控えを取ってください。
-        </Text>
+      </Section>
+
+      <Section title="アカウント">
+        <View style={styles.card}>
+          <InfoRow label="メールアドレス" value={session?.user.email ?? '-'} last />
+        </View>
+        <Button label="ログアウト" icon="log-out-outline" variant="secondary" onPress={signOut} />
       </Section>
 
       <Section
