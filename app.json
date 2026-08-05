@@ -3,6 +3,7 @@
     "name": "タスクボード",
     "slug": "taskboard-mobile",
     "version": "1.0.0",
+    "scheme": "taskboardmobile",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -27,6 +28,11 @@
     "plugins": [
       "expo-asset",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "09738137-f617-4720-b186-bf451ad15f86"
+      }
+    }
   }
 }
