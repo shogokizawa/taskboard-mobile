@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useMemo, useState } from 'react';
 import {
@@ -11,13 +12,24 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SubTaskEmpty, SubTaskItem } from '../components/SubTaskItem';
 import { TagChip } from '../components/TagChip';
 import { Button, Field, Section } from '../components/ui';
 import { PRIORITIES, PRIORITY_COLOR } from '../lib/priority';
+import {
+  addSubTask,
+  canAddChildAt,
+  countSubtasks,
+  createSubTask,
+  flattenSubTasks,
+  removeSubTask,
+  toggleSubTask,
+  updateSubTask,
+} from '../lib/subtasks';
 import type { RootStackParamList } from '../navigation/types';
 import { useBoard } from '../store/BoardContext';
 import { MIN_TOUCH, colors, radius, spacing, withAlpha } from '../theme';
-import type { Priority } from '../types/task';
+import type { Priority, SubTask } from '../types/task';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddTask'>;
 
@@ -33,6 +45,7 @@ export function AddTaskScreen({ navigation, route }: Props) {
   );
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [priority, setPriority] = useState<Priority | null>(null);
+  const [subtasks, setSubtasks] = useState<SubTask[]>([]);
   const [saving, setSaving] = useState(false);
 
   const canSave = title.trim().length > 0 && statusId !== '' && !saving;
@@ -41,6 +54,9 @@ export function AddTaskScreen({ navigation, route }: Props) {
     () => tags.filter((t) => selectedTagIds.includes(t.id)),
     [tags, selectedTagIds],
   );
+
+  const flat = useMemo(() => flattenSubTasks(subtasks), [subtasks]);
+  const counts = useMemo(() => countSubtasks(subtasks), [subtasks]);
 
   const toggleTag = (id: string) => {
     setSelectedTagIds((prev) =>
@@ -58,6 +74,7 @@ export function AddTaskScreen({ navigation, route }: Props) {
         status_id: statusId,
         tags: selectedTags,
         priority,
+        subtasks: pruneEmpty(subtasks),
       });
       navigation.goBack();
     } catch {
@@ -163,6 +180,45 @@ export function AddTaskScreen({ navigation, route }: Props) {
           )}
         </Section>
 
+        <Section
+          title={counts.total > 0 ? `サブタスク（${counts.done}/${counts.total}）` : 'サブタスク'}
+          action={
+            <Pressable
+              onPress={() => setSubtasks((prev) => addSubTask(prev, null, createSubTask()))}
+              accessibilityRole="button"
+              accessibilityLabel="サブタスクを追加"
+              hitSlop={8}
+              style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+            >
+              <Ionicons name="add" size={16} color={colors.accent} />
+              <Text style={styles.addLabel}>追加</Text>
+            </Pressable>
+          }
+        >
+          {flat.length === 0 ? (
+            <SubTaskEmpty />
+          ) : (
+            <View>
+              {flat.map(({ node, depth }) => (
+                <SubTaskItem
+                  key={node.id}
+                  node={node}
+                  depth={depth}
+                  canAddChild={canAddChildAt(depth)}
+                  onToggle={() => setSubtasks((prev) => toggleSubTask(prev, node.id))}
+                  onChangeTitle={(value) =>
+                    setSubtasks((prev) => updateSubTask(prev, node.id, { title: value }))
+                  }
+                  onAddChild={() =>
+                    setSubtasks((prev) => addSubTask(prev, node.id, createSubTask()))
+                  }
+                  onRemove={() => setSubtasks((prev) => removeSubTask(prev, node.id))}
+                />
+              ))}
+            </View>
+          )}
+        </Section>
+
         <Field
           label="メモ"
           value={memo}
@@ -176,6 +232,13 @@ export function AddTaskScreen({ navigation, route }: Props) {
       </ScrollView>
     </KeyboardAvoidingView>
   );
+}
+
+/** タイトルが空のサブタスクを、子ごと落とす */
+function pruneEmpty(subtasks: SubTask[]): SubTask[] {
+  return subtasks
+    .filter((st) => st.title.trim().length > 0)
+    .map((st) => ({ ...st, title: st.title.trim(), children: pruneEmpty(st.children) }));
 }
 
 const styles = StyleSheet.create({
@@ -226,5 +289,15 @@ const styles = StyleSheet.create({
   memoInput: {
     minHeight: 96,
     textAlignVertical: 'top',
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  addLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.accent,
   },
 });
