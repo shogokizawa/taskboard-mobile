@@ -2,16 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LinkListEditor } from '../components/LinkListEditor';
@@ -174,184 +166,181 @@ export function TaskDetailScreen({ navigation, route }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
+      keyboardShouldPersistTaps="handled"
+      bottomOffset={insets.bottom + spacing.xl}
     >
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Field
-          label="タイトル"
-          value={title}
-          onChangeText={setTitle}
-          placeholder="やることを入力"
-          multiline
-        />
+      <Field
+        label="タイトル"
+        value={title}
+        onChangeText={setTitle}
+        placeholder="やることを入力"
+        multiline
+      />
 
-        <Section title="ステータス">
-          <View style={styles.row}>
-            {statuses.map((status) => {
-              const selected = status.id === statusId;
-              return (
-                <Pressable
-                  key={status.id}
-                  onPress={() => setStatusId(status.id)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={status.name}
-                  style={({ pressed }) => [
-                    styles.statusOption,
-                    selected && {
-                      backgroundColor: withAlpha(status.color, 0.16),
-                      borderColor: withAlpha(status.color, 0.5),
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={[styles.dot, { backgroundColor: status.color }]} />
-                  <Text style={[styles.statusLabel, selected && styles.statusLabelSelected]}>
-                    {status.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Section>
-
-        <Section title="優先度">
-          <View style={styles.row}>
-            {PRIORITIES.map((p) => {
-              const selected = p === priority;
-              const color = PRIORITY_COLOR[p];
-              return (
-                <Pressable
-                  key={p}
-                  onPress={() => setPriority(selected ? null : p)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`優先度 ${p}`}
-                  style={({ pressed }) => [
-                    styles.statusOption,
-                    selected && {
-                      backgroundColor: withAlpha(color, 0.16),
-                      borderColor: withAlpha(color, 0.5),
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={[styles.dot, { backgroundColor: color }]} />
-                  <Text style={[styles.statusLabel, selected && styles.statusLabelSelected]}>
-                    {p}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Section>
-
-        <Section title="タグ">
-          {tags.length === 0 ? (
-            <Text style={styles.hintText}>タグは設定画面から追加できます。</Text>
-          ) : (
-            <View style={styles.row}>
-              {tags.map((tag) => (
-                <TagChip
-                  key={tag.id}
-                  tag={tag}
-                  size="md"
-                  selected={selectedTagIds.includes(tag.id)}
-                  onPress={() =>
-                    setSelectedTagIds((prev) =>
-                      prev.includes(tag.id)
-                        ? prev.filter((id) => id !== tag.id)
-                        : [...prev, tag.id],
-                    )
-                  }
-                />
-              ))}
-            </View>
-          )}
-        </Section>
-
-        <Section
-          title={counts.total > 0 ? `サブタスク（${counts.done}/${counts.total}）` : 'サブタスク'}
-          action={
-            <Pressable
-              onPress={() => setSubtasks((prev) => addSubTask(prev, null, createSubTask()))}
-              accessibilityRole="button"
-              accessibilityLabel="サブタスクを追加"
-              hitSlop={8}
-              style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="add" size={16} color={colors.accent} />
-              <Text style={styles.addLabel}>追加</Text>
-            </Pressable>
-          }
-        >
-          {flat.length === 0 ? (
-            <SubTaskEmpty />
-          ) : (
-            <View>
-              {flat.map(({ node, depth }) => (
-                <SubTaskItem
-                  key={node.id}
-                  node={node}
-                  depth={depth}
-                  canAddChild={canAddChildAt(depth)}
-                  hasChildren={node.children.length > 0}
-                  collapsed={collapsedIds.has(node.id)}
-                  onToggleCollapse={() => toggleCollapse(node.id)}
-                  onToggle={() => setSubtasks((prev) => toggleSubTask(prev, node.id))}
-                  onChangeTitle={(value) =>
-                    setSubtasks((prev) => updateSubTask(prev, node.id, { title: value }))
-                  }
-                  onChangeMemo={(value) =>
-                    setSubtasks((prev) => updateSubTask(prev, node.id, { memo: value }))
-                  }
-                  onChangeLinks={(value) =>
-                    setSubtasks((prev) => updateSubTask(prev, node.id, { links: value }))
-                  }
-                  onAddChild={() =>
-                    setSubtasks((prev) => addSubTask(prev, node.id, createSubTask()))
-                  }
-                  onRemove={() => setSubtasks((prev) => removeSubTask(prev, node.id))}
-                />
-              ))}
-            </View>
-          )}
-        </Section>
-
-        <Section title="リンク">
-          <LinkListEditor links={links} onChange={setLinks} />
-        </Section>
-
-        <Field
-          label="メモ"
-          value={memo}
-          onChangeText={setMemo}
-          placeholder="補足があれば"
-          multiline
-          style={styles.memoInput}
-        />
-
-        <View style={styles.footer}>
-          <Button label="保存" icon="checkmark" onPress={handleSave} disabled={committing} />
-          <Button
-            label="このタスクを削除"
-            icon="trash-outline"
-            variant="danger"
-            onPress={handleDelete}
-            disabled={committing}
-          />
+      <Section title="ステータス">
+        <View style={styles.row}>
+          {statuses.map((status) => {
+            const selected = status.id === statusId;
+            return (
+              <Pressable
+                key={status.id}
+                onPress={() => setStatusId(status.id)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                accessibilityLabel={status.name}
+                style={({ pressed }) => [
+                  styles.statusOption,
+                  selected && {
+                    backgroundColor: withAlpha(status.color, 0.16),
+                    borderColor: withAlpha(status.color, 0.5),
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={[styles.dot, { backgroundColor: status.color }]} />
+                <Text style={[styles.statusLabel, selected && styles.statusLabelSelected]}>
+                  {status.name}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
+      </Section>
 
-        <Text style={styles.timestamps}>
-          作成: {formatDate(task.created_at)}　更新: {formatDate(task.updated_at)}
-        </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <Section title="優先度">
+        <View style={styles.row}>
+          {PRIORITIES.map((p) => {
+            const selected = p === priority;
+            const color = PRIORITY_COLOR[p];
+            return (
+              <Pressable
+                key={p}
+                onPress={() => setPriority(selected ? null : p)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`優先度 ${p}`}
+                style={({ pressed }) => [
+                  styles.statusOption,
+                  selected && {
+                    backgroundColor: withAlpha(color, 0.16),
+                    borderColor: withAlpha(color, 0.5),
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={[styles.dot, { backgroundColor: color }]} />
+                <Text style={[styles.statusLabel, selected && styles.statusLabelSelected]}>
+                  {p}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </Section>
+
+      <Section title="タグ">
+        {tags.length === 0 ? (
+          <Text style={styles.hintText}>タグは設定画面から追加できます。</Text>
+        ) : (
+          <View style={styles.row}>
+            {tags.map((tag) => (
+              <TagChip
+                key={tag.id}
+                tag={tag}
+                size="md"
+                selected={selectedTagIds.includes(tag.id)}
+                onPress={() =>
+                  setSelectedTagIds((prev) =>
+                    prev.includes(tag.id)
+                      ? prev.filter((id) => id !== tag.id)
+                      : [...prev, tag.id],
+                  )
+                }
+              />
+            ))}
+          </View>
+        )}
+      </Section>
+
+      <Section
+        title={counts.total > 0 ? `サブタスク（${counts.done}/${counts.total}）` : 'サブタスク'}
+        action={
+          <Pressable
+            onPress={() => setSubtasks((prev) => addSubTask(prev, null, createSubTask()))}
+            accessibilityRole="button"
+            accessibilityLabel="サブタスクを追加"
+            hitSlop={8}
+            style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="add" size={16} color={colors.accent} />
+            <Text style={styles.addLabel}>追加</Text>
+          </Pressable>
+        }
+      >
+        {flat.length === 0 ? (
+          <SubTaskEmpty />
+        ) : (
+          <View>
+            {flat.map(({ node, depth }) => (
+              <SubTaskItem
+                key={node.id}
+                node={node}
+                depth={depth}
+                canAddChild={canAddChildAt(depth)}
+                hasChildren={node.children.length > 0}
+                collapsed={collapsedIds.has(node.id)}
+                onToggleCollapse={() => toggleCollapse(node.id)}
+                onToggle={() => setSubtasks((prev) => toggleSubTask(prev, node.id))}
+                onChangeTitle={(value) =>
+                  setSubtasks((prev) => updateSubTask(prev, node.id, { title: value }))
+                }
+                onChangeMemo={(value) =>
+                  setSubtasks((prev) => updateSubTask(prev, node.id, { memo: value }))
+                }
+                onChangeLinks={(value) =>
+                  setSubtasks((prev) => updateSubTask(prev, node.id, { links: value }))
+                }
+                onAddChild={() =>
+                  setSubtasks((prev) => addSubTask(prev, node.id, createSubTask()))
+                }
+                onRemove={() => setSubtasks((prev) => removeSubTask(prev, node.id))}
+              />
+            ))}
+          </View>
+        )}
+      </Section>
+
+      <Section title="リンク">
+        <LinkListEditor links={links} onChange={setLinks} />
+      </Section>
+
+      <Field
+        label="メモ"
+        value={memo}
+        onChangeText={setMemo}
+        placeholder="補足があれば"
+        multiline
+        style={styles.memoInput}
+      />
+
+      <View style={styles.footer}>
+        <Button label="保存" icon="checkmark" onPress={handleSave} disabled={committing} />
+        <Button
+          label="このタスクを削除"
+          icon="trash-outline"
+          variant="danger"
+          onPress={handleDelete}
+          disabled={committing}
+        />
+      </View>
+
+      <Text style={styles.timestamps}>
+        作成: {formatDate(task.created_at)}　更新: {formatDate(task.updated_at)}
+      </Text>
+    </KeyboardAwareScrollView>
   );
 }
 

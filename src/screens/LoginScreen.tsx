@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Field } from '../components/ui';
@@ -37,63 +38,60 @@ export function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.xxl }]}
+      keyboardShouldPersistTaps="handled"
+      bottomOffset={insets.bottom + spacing.xl}
     >
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.xxl }]}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={styles.title}>taskboard</Text>
-        <Text style={styles.subtitle}>
-          {mode === 'signIn' ? 'ログインしてください' : 'アカウントを作成します'}
-        </Text>
+      <Text style={styles.title}>taskboard</Text>
+      <Text style={styles.subtitle}>
+        {mode === 'signIn' ? 'ログインしてください' : 'アカウントを作成します'}
+      </Text>
 
-        <View style={styles.form}>
-          <Field
-            label="メールアドレス"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            returnKeyType="next"
-          />
-          <Field
-            label="パスワード"
-            hint="6文字以上"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            autoCapitalize="none"
-            autoCorrect={false}
-            secureTextEntry
-            returnKeyType="done"
-            onSubmitEditing={handleSubmit}
-          />
+      <View style={styles.form}>
+        <Field
+          label="メールアドレス"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="you@example.com"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          returnKeyType="next"
+        />
+        <Field
+          label="パスワード"
+          hint="6文字以上"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="••••••••"
+          autoCapitalize="none"
+          autoCorrect={false}
+          secureTextEntry
+          returnKeyType="done"
+          onSubmitEditing={handleSubmit}
+        />
 
-          {error && <Text style={styles.error}>{error}</Text>}
-          {notice && <Text style={styles.notice}>{notice}</Text>}
+        {error && <Text style={styles.error}>{error}</Text>}
+        {notice && <Text style={styles.notice}>{notice}</Text>}
 
-          <Button
-            label={mode === 'signIn' ? 'ログイン' : '登録する'}
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-          />
-          <Button
-            label={mode === 'signIn' ? 'アカウントを作成する' : 'ログインへ戻る'}
-            variant="secondary"
-            onPress={() => {
-              setMode((m) => (m === 'signIn' ? 'signUp' : 'signIn'));
-              setError(null);
-              setNotice(null);
-            }}
-          />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <Button
+          label={mode === 'signIn' ? 'ログイン' : '登録する'}
+          onPress={handleSubmit}
+          disabled={!canSubmit}
+        />
+        <Button
+          label={mode === 'signIn' ? 'アカウントを作成する' : 'ログインへ戻る'}
+          variant="secondary"
+          onPress={() => {
+            setMode((m) => (m === 'signIn' ? 'signUp' : 'signIn'));
+            setError(null);
+            setNotice(null);
+          }}
+        />
+      </View>
+    </KeyboardAwareScrollView>
   );
 }
 
