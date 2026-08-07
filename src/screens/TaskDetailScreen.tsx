@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -21,6 +22,7 @@ import { PRIORITIES, PRIORITY_COLOR } from '../lib/priority';
 import {
   addSubTask,
   canAddChildAt,
+  collectParentIds,
   countSubtasks,
   createSubTask,
   flattenSubTasks,
@@ -51,8 +53,19 @@ export function TaskDetailScreen({ navigation, route }: Props) {
   const [priority, setPriority] = useState<Priority | null>(task?.priority ?? null);
   const [subtasks, setSubtasks] = useState<SubTask[]>(task?.subtasks ?? []);
   const [links, setLinks] = useState<TaskLink[]>(task?.links ?? []);
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() =>
+    collectParentIds(task?.subtasks ?? []),
+  );
   /** 保存/削除の実行中。beforeRemove の確認を抑止するのにも使う */
   const [committing, setCommitting] = useState(false);
+
+  // 画面を開き直したときも、常に全て畳んだ状態からやり直す
+  useFocusEffect(
+    useCallback(() => {
+      setCollapsedIds(collectParentIds(task?.subtasks ?? []));
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [task?.id]),
+  );
 
   const dirty = useMemo(() => {
     if (!task) return false;
@@ -84,7 +97,16 @@ export function TaskDetailScreen({ navigation, route }: Props) {
     return unsubscribe;
   }, [navigation, dirty, committing]);
 
-  const flat = useMemo(() => flattenSubTasks(subtasks), [subtasks]);
+  const toggleCollapse = (id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const flat = useMemo(() => flattenSubTasks(subtasks, collapsedIds), [subtasks, collapsedIds]);
   const counts = useMemo(() => countSubtasks(subtasks), [subtasks]);
 
   const handleSave = useCallback(async () => {
@@ -278,6 +300,9 @@ export function TaskDetailScreen({ navigation, route }: Props) {
                   node={node}
                   depth={depth}
                   canAddChild={canAddChildAt(depth)}
+                  hasChildren={node.children.length > 0}
+                  collapsed={collapsedIds.has(node.id)}
+                  onToggleCollapse={() => toggleCollapse(node.id)}
                   onToggle={() => setSubtasks((prev) => toggleSubTask(prev, node.id))}
                   onChangeTitle={(value) =>
                     setSubtasks((prev) => updateSubTask(prev, node.id, { title: value }))

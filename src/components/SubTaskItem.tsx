@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors, radius, spacing } from '../theme';
@@ -14,7 +15,12 @@ type Props = {
   depth: number;
   /** これ以上子サブタスクを追加できるか */
   canAddChild: boolean;
+  /** 子サブタスクを持つか（開閉トグルの表示要否） */
+  hasChildren: boolean;
+  /** 子サブタスクを畳んで隠しているか */
+  collapsed: boolean;
   onToggle: () => void;
+  onToggleCollapse: () => void;
   onChangeTitle: (title: string) => void;
   onChangeMemo: (memo: string) => void;
   onChangeLinks: (links: TaskLink[]) => void;
@@ -26,7 +32,10 @@ export function SubTaskItem({
   node,
   depth,
   canAddChild,
+  hasChildren,
+  collapsed,
   onToggle,
+  onToggleCollapse,
   onChangeTitle,
   onChangeMemo,
   onChangeLinks,
@@ -36,10 +45,36 @@ export function SubTaskItem({
   const [expanded, setExpanded] = useState(false);
   const hasDetail = node.memo.trim().length > 0 || node.links.length > 0;
 
+  // 画面を離れて戻ってきたときは、常に畳んだ状態からやり直す
+  useFocusEffect(
+    useCallback(() => {
+      setExpanded(false);
+    }, []),
+  );
+
   return (
     <View style={{ marginLeft: depth * INDENT }}>
       <View style={styles.row}>
         {depth > 0 && <View style={styles.branch} />}
+
+        {hasChildren ? (
+          <Pressable
+            onPress={onToggleCollapse}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="子サブタスクの表示切り替え"
+            accessibilityState={{ expanded: !collapsed }}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+          >
+            <Ionicons
+              name={collapsed ? 'chevron-forward' : 'chevron-down'}
+              size={18}
+              color={colors.textSecondary}
+            />
+          </Pressable>
+        ) : (
+          <View style={styles.iconButton} />
+        )}
 
         <Pressable
           onPress={onToggle}

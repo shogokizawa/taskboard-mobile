@@ -106,17 +106,38 @@ export function removeSubTask(subtasks: SubTask[], id: string): SubTask[] {
     .map((st) => ({ ...st, children: removeSubTask(st.children, id) }));
 }
 
+/** 子を持つノードのidを再帰的に集める（初期表示を全て畳んだ状態にするため） */
+export function collectParentIds(subtasks: SubTask[]): Set<string> {
+  const ids = new Set<string>();
+  for (const st of subtasks) {
+    if (st.children.length > 0) {
+      ids.add(st.id);
+      for (const id of collectParentIds(st.children)) ids.add(id);
+    }
+  }
+  return ids;
+}
+
 export type FlatSubTask = {
   node: SubTask;
   depth: number;
 };
 
-/** ツリーを描画用に一次元へ潰す */
-export function flattenSubTasks(subtasks: SubTask[], depth = 0): FlatSubTask[] {
+/**
+ * ツリーを描画用に一次元へ潰す。
+ * collapsedIds に含まれるノードの子孫はスキップする（畳んで隠す）。
+ */
+export function flattenSubTasks(
+  subtasks: SubTask[],
+  collapsedIds: Set<string> = new Set(),
+  depth = 0,
+): FlatSubTask[] {
   const out: FlatSubTask[] = [];
   for (const node of subtasks) {
     out.push({ node, depth });
-    out.push(...flattenSubTasks(node.children, depth + 1));
+    if (!collapsedIds.has(node.id)) {
+      out.push(...flattenSubTasks(node.children, collapsedIds, depth + 1));
+    }
   }
   return out;
 }

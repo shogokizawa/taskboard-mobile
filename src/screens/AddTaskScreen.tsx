@@ -48,6 +48,7 @@ export function AddTaskScreen({ navigation, route }: Props) {
   const [priority, setPriority] = useState<Priority | null>(null);
   const [subtasks, setSubtasks] = useState<SubTask[]>([]);
   const [links, setLinks] = useState<TaskLink[]>([]);
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
   const canSave = title.trim().length > 0 && statusId !== '' && !saving;
@@ -57,7 +58,16 @@ export function AddTaskScreen({ navigation, route }: Props) {
     [tags, selectedTagIds],
   );
 
-  const flat = useMemo(() => flattenSubTasks(subtasks), [subtasks]);
+  const toggleCollapse = (id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const flat = useMemo(() => flattenSubTasks(subtasks, collapsedIds), [subtasks, collapsedIds]);
   const counts = useMemo(() => countSubtasks(subtasks), [subtasks]);
 
   const toggleTag = (id: string) => {
@@ -208,6 +218,9 @@ export function AddTaskScreen({ navigation, route }: Props) {
                   node={node}
                   depth={depth}
                   canAddChild={canAddChildAt(depth)}
+                  hasChildren={node.children.length > 0}
+                  collapsed={collapsedIds.has(node.id)}
+                  onToggleCollapse={() => toggleCollapse(node.id)}
                   onToggle={() => setSubtasks((prev) => toggleSubTask(prev, node.id))}
                   onChangeTitle={(value) =>
                     setSubtasks((prev) => updateSubTask(prev, node.id, { title: value }))
