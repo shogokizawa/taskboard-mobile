@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors, radius, spacing } from '../theme';
-import type { SubTask } from '../types/task';
+import type { SubTask, TaskLink } from '../types/task';
+import { LinkListEditor } from './LinkListEditor';
 
 const INDENT = 20;
 
@@ -15,6 +16,8 @@ type Props = {
   canAddChild: boolean;
   onToggle: () => void;
   onChangeTitle: (title: string) => void;
+  onChangeMemo: (memo: string) => void;
+  onChangeLinks: (links: TaskLink[]) => void;
   onAddChild: () => void;
   onRemove: () => void;
 };
@@ -25,62 +28,98 @@ export function SubTaskItem({
   canAddChild,
   onToggle,
   onChangeTitle,
+  onChangeMemo,
+  onChangeLinks,
   onAddChild,
   onRemove,
 }: Props) {
+  const [expanded, setExpanded] = useState(false);
+  const hasDetail = node.memo.trim().length > 0 || node.links.length > 0;
+
   return (
-    <View style={[styles.row, { marginLeft: depth * INDENT }]}>
-      {depth > 0 && <View style={styles.branch} />}
+    <View style={{ marginLeft: depth * INDENT }}>
+      <View style={styles.row}>
+        {depth > 0 && <View style={styles.branch} />}
 
-      <Pressable
-        onPress={onToggle}
-        hitSlop={8}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: node.completed }}
-        accessibilityLabel={node.title || 'サブタスク'}
-        style={styles.checkbox}
-      >
-        <Ionicons
-          name={node.completed ? 'checkbox' : 'square-outline'}
-          size={22}
-          color={node.completed ? colors.accent : colors.textMuted}
+        <Pressable
+          onPress={onToggle}
+          hitSlop={8}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: node.completed }}
+          accessibilityLabel={node.title || 'サブタスク'}
+          style={styles.checkbox}
+        >
+          <Ionicons
+            name={node.completed ? 'checkbox' : 'square-outline'}
+            size={22}
+            color={node.completed ? colors.accent : colors.textMuted}
+          />
+        </Pressable>
+
+        <TextInput
+          value={node.title}
+          onChangeText={onChangeTitle}
+          placeholder="サブタスク名"
+          placeholderTextColor={colors.textMuted}
+          style={[styles.input, node.completed && styles.inputDone]}
+          multiline
         />
-      </Pressable>
 
-      <TextInput
-        value={node.title}
-        onChangeText={onChangeTitle}
-        placeholder="サブタスク名"
-        placeholderTextColor={colors.textMuted}
-        style={[styles.input, node.completed && styles.inputDone]}
-        multiline
-      />
+        <Pressable
+          onPress={() => setExpanded((v) => !v)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="メモ・リンクを表示"
+          accessibilityState={{ expanded }}
+          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+        >
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={hasDetail ? colors.accent : colors.textMuted}
+          />
+        </Pressable>
 
-      <Pressable
-        onPress={onAddChild}
-        disabled={!canAddChild}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel="子サブタスクを追加"
-        accessibilityState={{ disabled: !canAddChild }}
-        style={({ pressed }) => [styles.iconButton, pressed && canAddChild && styles.pressed]}
-      >
-        <Ionicons
-          name="add"
-          size={18}
-          color={canAddChild ? colors.textSecondary : colors.textMuted}
-        />
-      </Pressable>
+        <Pressable
+          onPress={onAddChild}
+          disabled={!canAddChild}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="子サブタスクを追加"
+          accessibilityState={{ disabled: !canAddChild }}
+          style={({ pressed }) => [styles.iconButton, pressed && canAddChild && styles.pressed]}
+        >
+          <Ionicons
+            name="add"
+            size={18}
+            color={canAddChild ? colors.textSecondary : colors.textMuted}
+          />
+        </Pressable>
 
-      <Pressable
-        onPress={onRemove}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel="サブタスクを削除"
-        style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
-      >
-        <Ionicons name="close" size={18} color={colors.textMuted} />
-      </Pressable>
+        <Pressable
+          onPress={onRemove}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="サブタスクを削除"
+          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+        >
+          <Ionicons name="close" size={18} color={colors.textMuted} />
+        </Pressable>
+      </View>
+
+      {expanded && (
+        <View style={styles.detail}>
+          <TextInput
+            value={node.memo}
+            onChangeText={onChangeMemo}
+            placeholder="メモ"
+            placeholderTextColor={colors.textMuted}
+            style={styles.memoInput}
+            multiline
+          />
+          <LinkListEditor links={node.links} onChange={onChangeLinks} />
+        </View>
+      )}
     </View>
   );
 }
@@ -139,5 +178,22 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     paddingVertical: spacing.sm,
+  },
+  detail: {
+    marginLeft: 34,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  memoInput: {
+    minHeight: 60,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    color: colors.textPrimary,
+    fontSize: 13,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    textAlignVertical: 'top',
   },
 });

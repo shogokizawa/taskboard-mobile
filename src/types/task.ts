@@ -21,17 +21,19 @@ export type Status = {
   user_id: string | null;
 };
 
+export type TaskLink = {
+  url: string;
+  label?: string;
+};
+
 export type SubTask = {
   id: string;
   title: string;
   completed: boolean;
+  memo: string;
+  links: TaskLink[];
   /** 再帰ツリー。最大ネスト段数は MAX_SUBTASK_DEPTH（lib/subtasks.ts） */
   children: SubTask[];
-};
-
-export type TaskLink = {
-  url: string;
-  label?: string;
 };
 
 /** タグとは別枠の専用フィールド。未設定は null */

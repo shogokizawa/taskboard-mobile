@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LinkListEditor } from '../components/LinkListEditor';
 import { SubTaskEmpty, SubTaskItem } from '../components/SubTaskItem';
 import { TagChip } from '../components/TagChip';
 import { Button, Field, Section } from '../components/ui';
@@ -29,7 +30,7 @@ import {
 import type { RootStackParamList } from '../navigation/types';
 import { useBoard } from '../store/BoardContext';
 import { MIN_TOUCH, colors, radius, spacing, withAlpha } from '../theme';
-import type { Priority, SubTask } from '../types/task';
+import type { Priority, SubTask, TaskLink } from '../types/task';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddTask'>;
 
@@ -46,6 +47,7 @@ export function AddTaskScreen({ navigation, route }: Props) {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [priority, setPriority] = useState<Priority | null>(null);
   const [subtasks, setSubtasks] = useState<SubTask[]>([]);
+  const [links, setLinks] = useState<TaskLink[]>([]);
   const [saving, setSaving] = useState(false);
 
   const canSave = title.trim().length > 0 && statusId !== '' && !saving;
@@ -75,6 +77,7 @@ export function AddTaskScreen({ navigation, route }: Props) {
         tags: selectedTags,
         priority,
         subtasks: pruneEmpty(subtasks),
+        links: pruneLinks(links),
       });
       navigation.goBack();
     } catch {
@@ -209,6 +212,12 @@ export function AddTaskScreen({ navigation, route }: Props) {
                   onChangeTitle={(value) =>
                     setSubtasks((prev) => updateSubTask(prev, node.id, { title: value }))
                   }
+                  onChangeMemo={(value) =>
+                    setSubtasks((prev) => updateSubTask(prev, node.id, { memo: value }))
+                  }
+                  onChangeLinks={(value) =>
+                    setSubtasks((prev) => updateSubTask(prev, node.id, { links: value }))
+                  }
                   onAddChild={() =>
                     setSubtasks((prev) => addSubTask(prev, node.id, createSubTask()))
                   }
@@ -217,6 +226,10 @@ export function AddTaskScreen({ navigation, route }: Props) {
               ))}
             </View>
           )}
+        </Section>
+
+        <Section title="リンク">
+          <LinkListEditor links={links} onChange={setLinks} />
         </Section>
 
         <Field
@@ -239,6 +252,13 @@ function pruneEmpty(subtasks: SubTask[]): SubTask[] {
   return subtasks
     .filter((st) => st.title.trim().length > 0)
     .map((st) => ({ ...st, title: st.title.trim(), children: pruneEmpty(st.children) }));
+}
+
+/** URLが空のリンクは保存時に捨てる */
+function pruneLinks(links: TaskLink[]): TaskLink[] {
+  return links
+    .filter((l) => l.url.trim().length > 0)
+    .map((l) => ({ url: l.url.trim(), label: l.label?.trim() || undefined }));
 }
 
 const styles = StyleSheet.create({

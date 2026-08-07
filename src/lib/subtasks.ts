@@ -21,14 +21,24 @@ export function countSubtasks(subtasks: SubTask[]): SubTaskCounts {
 }
 
 export function createSubTask(title = ''): SubTask {
-  return { id: uid(), title, completed: false, children: [] };
+  return { id: uid(), title, completed: false, memo: '', links: [], children: [] };
+}
+
+/** DBの旧データ(memo/links追加前に作成されたサブタスク)を補完する */
+export function normalizeSubTasks(subtasks: SubTask[]): SubTask[] {
+  return subtasks.map((st) => ({
+    ...st,
+    memo: st.memo ?? '',
+    links: st.links ?? [],
+    children: normalizeSubTasks(st.children ?? []),
+  }));
 }
 
 /** id に一致するノードへ patch を当てた新しいツリーを返す */
 export function updateSubTask(
   subtasks: SubTask[],
   id: string,
-  patch: Partial<Pick<SubTask, 'title' | 'completed'>>,
+  patch: Partial<Pick<SubTask, 'title' | 'completed' | 'memo' | 'links'>>,
 ): SubTask[] {
   return subtasks.map((st) =>
     st.id === id

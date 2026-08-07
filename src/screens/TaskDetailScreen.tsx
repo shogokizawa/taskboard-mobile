@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LinkListEditor } from '../components/LinkListEditor';
 import { SubTaskEmpty, SubTaskItem } from '../components/SubTaskItem';
 import { TagChip } from '../components/TagChip';
 import { Button, Field, Section } from '../components/ui';
@@ -30,7 +31,7 @@ import {
 import type { RootStackParamList } from '../navigation/types';
 import { useBoard } from '../store/BoardContext';
 import { MIN_TOUCH, colors, radius, spacing, withAlpha } from '../theme';
-import type { Priority, SubTask } from '../types/task';
+import type { Priority, SubTask, TaskLink } from '../types/task';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskDetail'>;
 
@@ -49,6 +50,7 @@ export function TaskDetailScreen({ navigation, route }: Props) {
   );
   const [priority, setPriority] = useState<Priority | null>(task?.priority ?? null);
   const [subtasks, setSubtasks] = useState<SubTask[]>(task?.subtasks ?? []);
+  const [links, setLinks] = useState<TaskLink[]>(task?.links ?? []);
   /** 保存/削除の実行中。beforeRemove の確認を抑止するのにも使う */
   const [committing, setCommitting] = useState(false);
 
@@ -60,9 +62,10 @@ export function TaskDetailScreen({ navigation, route }: Props) {
       statusId !== task.status_id ||
       priority !== (task.priority ?? null) ||
       JSON.stringify(selectedTagIds) !== JSON.stringify(task.tags.map((t) => t.id)) ||
-      JSON.stringify(subtasks) !== JSON.stringify(task.subtasks)
+      JSON.stringify(subtasks) !== JSON.stringify(task.subtasks) ||
+      JSON.stringify(links) !== JSON.stringify(task.links)
     );
-  }, [task, title, memo, statusId, priority, selectedTagIds, subtasks]);
+  }, [task, title, memo, statusId, priority, selectedTagIds, subtasks, links]);
 
   // 未保存のまま戻ろうとしたら引き止める
   useEffect(() => {
@@ -101,12 +104,25 @@ export function TaskDetailScreen({ navigation, route }: Props) {
         priority,
         // 空のサブタスクは保存時に捨てる
         subtasks: pruneEmpty(subtasks),
+        links: pruneLinks(links),
       });
       navigation.goBack();
     } catch {
       setCommitting(false);
     }
-  }, [task, title, memo, statusId, priority, tags, selectedTagIds, subtasks, updateTask, navigation]);
+  }, [
+    task,
+    title,
+    memo,
+    statusId,
+    priority,
+    tags,
+    selectedTagIds,
+    subtasks,
+    links,
+    updateTask,
+    navigation,
+  ]);
 
   const handleDelete = useCallback(() => {
     if (!task) return;
@@ -266,6 +282,12 @@ export function TaskDetailScreen({ navigation, route }: Props) {
                   onChangeTitle={(value) =>
                     setSubtasks((prev) => updateSubTask(prev, node.id, { title: value }))
                   }
+                  onChangeMemo={(value) =>
+                    setSubtasks((prev) => updateSubTask(prev, node.id, { memo: value }))
+                  }
+                  onChangeLinks={(value) =>
+                    setSubtasks((prev) => updateSubTask(prev, node.id, { links: value }))
+                  }
                   onAddChild={() =>
                     setSubtasks((prev) => addSubTask(prev, node.id, createSubTask()))
                   }
@@ -274,6 +296,10 @@ export function TaskDetailScreen({ navigation, route }: Props) {
               ))}
             </View>
           )}
+        </Section>
+
+        <Section title="リンク">
+          <LinkListEditor links={links} onChange={setLinks} />
         </Section>
 
         <Field
@@ -309,6 +335,13 @@ function pruneEmpty(subtasks: SubTask[]): SubTask[] {
   return subtasks
     .filter((st) => st.title.trim().length > 0)
     .map((st) => ({ ...st, title: st.title.trim(), children: pruneEmpty(st.children) }));
+}
+
+/** URLが空のリンクは保存時に捨てる */
+function pruneLinks(links: TaskLink[]): TaskLink[] {
+  return links
+    .filter((l) => l.url.trim().length > 0)
+    .map((l) => ({ url: l.url.trim(), label: l.label?.trim() || undefined }));
 }
 
 function formatDate(iso: string): string {

@@ -1,5 +1,6 @@
 import { DEFAULT_STATUSES, DEFAULT_TAGS } from './seed';
 import { supabase } from './supabaseClient';
+import { normalizeSubTasks } from './subtasks';
 import type {
   BoardSnapshot,
   NewTaskInput,
@@ -71,7 +72,10 @@ class SupabaseBoardRepository implements BoardRepository {
     return {
       statuses: unwrap<Status[]>(statuses),
       tags: unwrap<Tag[]>(tags),
-      tasks: unwrap<Task[]>(tasks),
+      tasks: unwrap<Task[]>(tasks).map((t) => ({
+        ...t,
+        subtasks: normalizeSubTasks(t.subtasks),
+      })),
     };
   }
 
