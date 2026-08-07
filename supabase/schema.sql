@@ -31,9 +31,13 @@ create table if not exists public.tasks (
   subtasks jsonb not null default '[]'::jsonb,
   tags jsonb not null default '[]'::jsonb,
   links jsonb not null default '[]'::jsonb,
+  priority text check (priority in ('高', '中', '低')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- 既存DBに列を追加する場合はこちらを実行
+alter table public.tasks add column if not exists priority text check (priority in ('高', '中', '低'));
 
 create index if not exists tasks_user_id_idx on public.tasks (user_id);
 create index if not exists tasks_status_id_idx on public.tasks (status_id);

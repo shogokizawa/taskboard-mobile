@@ -13,9 +13,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TagChip } from '../components/TagChip';
 import { Button, Field, Section } from '../components/ui';
+import { PRIORITIES, PRIORITY_COLOR } from '../lib/priority';
 import type { RootStackParamList } from '../navigation/types';
 import { useBoard } from '../store/BoardContext';
 import { MIN_TOUCH, colors, radius, spacing, withAlpha } from '../theme';
+import type { Priority } from '../types/task';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddTask'>;
 
@@ -30,6 +32,7 @@ export function AddTaskScreen({ navigation, route }: Props) {
     route.params?.statusId ?? statuses[0]?.id ?? '',
   );
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [priority, setPriority] = useState<Priority | null>(null);
   const [saving, setSaving] = useState(false);
 
   const canSave = title.trim().length > 0 && statusId !== '' && !saving;
@@ -54,6 +57,7 @@ export function AddTaskScreen({ navigation, route }: Props) {
         memo: memo.trim(),
         status_id: statusId,
         tags: selectedTags,
+        priority,
       });
       navigation.goBack();
     } catch {
@@ -103,6 +107,37 @@ export function AddTaskScreen({ navigation, route }: Props) {
                   <View style={[styles.dot, { backgroundColor: status.color }]} />
                   <Text style={[styles.statusLabel, selected && styles.statusLabelSelected]}>
                     {status.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Section>
+
+        <Section title="優先度">
+          <View style={styles.row}>
+            {PRIORITIES.map((p) => {
+              const selected = p === priority;
+              const color = PRIORITY_COLOR[p];
+              return (
+                <Pressable
+                  key={p}
+                  onPress={() => setPriority(selected ? null : p)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`優先度 ${p}`}
+                  style={({ pressed }) => [
+                    styles.statusOption,
+                    selected && {
+                      backgroundColor: withAlpha(color, 0.16),
+                      borderColor: withAlpha(color, 0.5),
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <View style={[styles.dot, { backgroundColor: color }]} />
+                  <Text style={[styles.statusLabel, selected && styles.statusLabelSelected]}>
+                    {p}
                   </Text>
                 </Pressable>
               );

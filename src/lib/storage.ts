@@ -107,6 +107,7 @@ class SupabaseBoardRepository implements BoardRepository {
         subtasks: input.subtasks ?? [],
         tags: input.tags ?? [],
         links: input.links ?? [],
+        priority: input.priority ?? null,
       }),
     );
     return this.load();

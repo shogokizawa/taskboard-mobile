@@ -5,6 +5,7 @@ import ReanimatedSwipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
+import { PRIORITY_COLOR } from '../lib/priority';
 import { countSubtasks } from '../lib/subtasks';
 import { MIN_TOUCH, colors, radius, spacing, withAlpha } from '../theme';
 import type { Task } from '../types/task';
@@ -48,9 +49,23 @@ export function TaskCard({ task, onPress, onLongPress, isActive, onMove, onDelet
         pressed && !isActive && styles.cardPressed,
       ]}
     >
-      <Text style={styles.title} numberOfLines={2}>
-        {task.title || '無題のタスク'}
-      </Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.title, styles.titleFlex]} numberOfLines={2}>
+          {task.title || '無題のタスク'}
+        </Text>
+        {task.priority && (
+          <View
+            style={[
+              styles.priorityBadge,
+              { backgroundColor: withAlpha(PRIORITY_COLOR[task.priority], 0.16) },
+            ]}
+          >
+            <Text style={[styles.priorityText, { color: PRIORITY_COLOR[task.priority] }]}>
+              {task.priority}
+            </Text>
+          </View>
+        )}
+      </View>
 
       {memoPreview.length > 0 && (
         <Text style={styles.memo} numberOfLines={1}>
@@ -175,11 +190,28 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  titleFlex: {
+    flex: 1,
+  },
   title: {
     fontSize: 15,
     fontWeight: '600',
     color: colors.textPrimary,
     lineHeight: 21,
+  },
+  priorityBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   memo: {
     fontSize: 12,

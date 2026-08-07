@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SubTaskEmpty, SubTaskItem } from '../components/SubTaskItem';
 import { TagChip } from '../components/TagChip';
 import { Button, Field, Section } from '../components/ui';
+import { PRIORITIES, PRIORITY_COLOR } from '../lib/priority';
 import {
   addSubTask,
   canAddChildAt,
@@ -29,7 +30,7 @@ import {
 import type { RootStackParamList } from '../navigation/types';
 import { useBoard } from '../store/BoardContext';
 import { MIN_TOUCH, colors, radius, spacing, withAlpha } from '../theme';
-import type { SubTask } from '../types/task';
+import type { Priority, SubTask } from '../types/task';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskDetail'>;
 
@@ -46,6 +47,7 @@ export function TaskDetailScreen({ navigation, route }: Props) {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     task?.tags.map((t) => t.id) ?? [],
   );
+  const [priority, setPriority] = useState<Priority | null>(task?.priority ?? null);
   const [subtasks, setSubtasks] = useState<SubTask[]>(task?.subtasks ?? []);
   /** 保存/削除の実行中。beforeRemove の確認を抑止するのにも使う */
   const [committing, setCommitting] = useState(false);
@@ -56,10 +58,11 @@ export function TaskDetailScreen({ navigation, route }: Props) {
       title !== task.title ||
       memo !== task.memo ||
       statusId !== task.status_id ||
+      priority !== (task.priority ?? null) ||
       JSON.stringify(selectedTagIds) !== JSON.stringify(task.tags.map((t) => t.id)) ||
       JSON.stringify(subtasks) !== JSON.stringify(task.subtasks)
     );
-  }, [task, title, memo, statusId, selectedTagIds, subtasks]);
+  }, [task, title, memo, statusId, priority, selectedTagIds, subtasks]);
 
   // 未保存のまま戻ろうとしたら引き止める
   useEffect(() => {
@@ -95,6 +98,7 @@ export function TaskDetailScreen({ navigation, route }: Props) {
         memo: memo.trim(),
         status_id: statusId,
         tags: tags.filter((t) => selectedTagIds.includes(t.id)),
+        priority,
         // 空のサブタスクは保存時に捨てる
         subtasks: pruneEmpty(subtasks),
       });
@@ -102,7 +106,7 @@ export function TaskDetailScreen({ navigation, route }: Props) {
     } catch {
       setCommitting(false);
     }
-  }, [task, title, memo, statusId, tags, selectedTagIds, subtasks, updateTask, navigation]);
+  }, [task, title, memo, statusId, priority, tags, selectedTagIds, subtasks, updateTask, navigation]);
 
   const handleDelete = useCallback(() => {
     if (!task) return;
@@ -171,6 +175,37 @@ export function TaskDetailScreen({ navigation, route }: Props) {
                   <View style={[styles.dot, { backgroundColor: status.color }]} />
                   <Text style={[styles.statusLabel, selected && styles.statusLabelSelected]}>
                     {status.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Section>
+
+        <Section title="優先度">
+          <View style={styles.row}>
+            {PRIORITIES.map((p) => {
+              const selected = p === priority;
+              const color = PRIORITY_COLOR[p];
+              return (
+                <Pressable
+                  key={p}
+                  onPress={() => setPriority(selected ? null : p)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`優先度 ${p}`}
+                  style={({ pressed }) => [
+                    styles.statusOption,
+                    selected && {
+                      backgroundColor: withAlpha(color, 0.16),
+                      borderColor: withAlpha(color, 0.5),
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <View style={[styles.dot, { backgroundColor: color }]} />
+                  <Text style={[styles.statusLabel, selected && styles.statusLabelSelected]}>
+                    {p}
                   </Text>
                 </Pressable>
               );

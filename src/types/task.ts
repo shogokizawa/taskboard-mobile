@@ -34,6 +34,9 @@ export type TaskLink = {
   label?: string;
 };
 
+/** タグとは別枠の専用フィールド。未設定は null */
+export type Priority = '高' | '中' | '低';
+
 export type Task = {
   id: string;
   title: string;
@@ -44,6 +47,7 @@ export type Task = {
   subtasks: SubTask[];
   tags: Tag[];
   links: TaskLink[];
+  priority: Priority | null;
   created_at: string;
   updated_at: string;
   user_id: string | null;
@@ -63,9 +67,13 @@ export type NewTaskInput = {
   tags?: Tag[];
   subtasks?: SubTask[];
   links?: TaskLink[];
+  priority?: Priority | null;
 };
 
 /** 更新可能なフィールドのみ。id / created_at / user_id は変更しない */
 export type TaskPatch = Partial<
-  Pick<Task, 'title' | 'memo' | 'status_id' | 'tags' | 'subtasks' | 'links' | 'position'>
+  Pick<
+    Task,
+    'title' | 'memo' | 'status_id' | 'tags' | 'subtasks' | 'links' | 'position' | 'priority'
+  >
 >;
