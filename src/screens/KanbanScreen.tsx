@@ -4,13 +4,14 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import DraggableFlatList, { type RenderItemParams } from 'react-native-draggable-flatlist';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { KanbanColumn } from '../components/KanbanColumn';
 import { StatusPickerSheet } from '../components/StatusPickerSheet';
 import { StatusTab } from '../components/StatusTab';
-import { TaskCard } from '../components/TaskCard';
 import type { RootStackParamList, TabParamList } from '../navigation/types';
 import { useBoard } from '../store/BoardContext';
 import { colors, radius, spacing } from '../theme';
@@ -22,9 +23,16 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
+/** これ以上スワイプしても列が動かないときの、指に対する追従率(ラバーバンド) */
+const EDGE_RESISTANCE = 0.3;
+/** 指を離したときにページ送りとみなす移動量の閾値(画面幅に対する比率) */
+const SWIPE_DISTANCE_RATIO = 0.25;
+const SWIPE_VELOCITY_THRESHOLD = 600;
+
 export function KanbanScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { ready, statuses, tasksByStatus, reorderTasks, moveTask, deleteTask } = useBoard();
+  const { width: screenWidth } = useWindowDimensions();
+  const { ready, statuses, tasksByStatus, moveTask } = useBoard();
 
   const [activeStatusId, setActiveStatusId] = useState<string | null>(null);
   /** 移動シートを開いているタスク */
@@ -41,67 +49,63 @@ export function KanbanScreen({ navigation }: Props) {
     }
   }, [statuses, activeStatusId]);
 
-  const tasks = useMemo(
-    () => (activeStatusId === null ? [] : tasksByStatus(activeStatusId)),
-    [activeStatusId, tasksByStatus],
+  const activeIndex = Math.max(
+    0,
+    statuses.findIndex((s) => s.id === activeStatusId),
   );
 
-  /**
-   * ドラッグ直後の並びをローカルに持つ。
-   * 保存が反映されるまで一瞬元の順序に戻って見えるのを防ぐため。
-   */
-  const [dragOrder, setDragOrder] = useState<Task[] | null>(null);
+  const translateX = useSharedValue(0);
+
+  // タブタップなど、スワイプ以外の要因で activeIndex が変わったときも列位置を追従させる
   useEffect(() => {
-    setDragOrder(null);
-  }, [tasks]);
+    translateX.value = withTiming(-activeIndex * screenWidth, { duration: 220 });
+  }, [activeIndex, screenWidth, translateX]);
 
-  const data = dragOrder ?? tasks;
-
-  const handleDragEnd = useCallback(
-    ({ data: next }: { data: Task[] }) => {
-      if (activeStatusId === null) return;
-      setDragOrder(next);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      void reorderTasks(
-        activeStatusId,
-        next.map((t) => t.id),
-      );
+  const setIndex = useCallback(
+    (index: number) => {
+      const status = statuses[index];
+      if (status) setActiveStatusId(status.id);
     },
-    [activeStatusId, reorderTasks],
+    [statuses],
   );
 
-  const confirmDelete = useCallback(
-    (task: Task) => {
-      Alert.alert('タスクを削除', `「${task.title || '無題のタスク'}」を削除しますか？`, [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '削除',
-          style: 'destructive',
-          onPress: () => void deleteTask(task.id),
-        },
-      ]);
-    },
-    [deleteTask],
+  const pan = Gesture.Pan()
+    .activeOffsetX([-12, 12])
+    .failOffsetY([-10, 10])
+    .onUpdate((e) => {
+      const base = -activeIndex * screenWidth;
+      const min = -(statuses.length - 1) * screenWidth;
+      const max = 0;
+      let next = base + e.translationX;
+      if (next > max) next = max + (next - max) * EDGE_RESISTANCE;
+      else if (next < min) next = min + (next - min) * EDGE_RESISTANCE;
+      translateX.value = next;
+    })
+    .onEnd((e) => {
+      const passedThreshold =
+        Math.abs(e.translationX) > screenWidth * SWIPE_DISTANCE_RATIO ||
+        Math.abs(e.velocityX) > SWIPE_VELOCITY_THRESHOLD;
+
+      let targetIndex = activeIndex;
+      if (passedThreshold) {
+        targetIndex = e.translationX < 0 ? activeIndex + 1 : activeIndex - 1;
+      }
+      targetIndex = Math.max(0, Math.min(statuses.length - 1, targetIndex));
+
+      translateX.value = withTiming(-targetIndex * screenWidth, { duration: 220 });
+      if (targetIndex !== activeIndex) runOnJS(setIndex)(targetIndex);
+    });
+
+  const rowStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const handlePressTask = useCallback(
+    (taskId: string) => navigation.navigate('TaskDetail', { taskId }),
+    [navigation],
   );
 
-  const renderItem = useCallback(
-    ({ item, drag, isActive }: RenderItemParams<Task>) => (
-      <View style={styles.cardWrapper}>
-        <TaskCard
-          task={item}
-          isActive={isActive}
-          onPress={() => navigation.navigate('TaskDetail', { taskId: item.id })}
-          onLongPress={() => {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            drag();
-          }}
-          onMove={() => setMovingTask(item)}
-          onDelete={() => confirmDelete(item)}
-        />
-      </View>
-    ),
-    [navigation, confirmDelete],
-  );
+  const handleRequestMove = useCallback((task: Task) => setMovingTask(task), []);
 
   if (!ready) {
     return (
@@ -139,26 +143,23 @@ export function KanbanScreen({ navigation }: Props) {
         ))}
       </ScrollView>
 
-      <DraggableFlatList
-        data={data}
-        onDragEnd={handleDragEnd}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        activationDistance={12}
-        containerStyle={styles.list}
-        contentContainerStyle={[
-          styles.listContent,
-          // FABと重ならないように下を空ける
-          { paddingBottom: insets.bottom + 96 },
-        ]}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="documents-outline" size={40} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>タスクがありません</Text>
-            <Text style={styles.emptyBody}>右下の＋から追加できます。</Text>
-          </View>
-        }
-      />
+      <GestureDetector gesture={pan}>
+        <View style={styles.pagerViewport}>
+          <Animated.View
+            style={[styles.pagerRow, { width: screenWidth * statuses.length }, rowStyle]}
+          >
+            {statuses.map((status) => (
+              <View key={status.id} style={{ width: screenWidth }}>
+                <KanbanColumn
+                  status={status}
+                  onPressTask={handlePressTask}
+                  onRequestMove={handleRequestMove}
+                />
+              </View>
+            ))}
+          </Animated.View>
+        </View>
+      </GestureDetector>
 
       <Pressable
         onPress={() =>
@@ -212,20 +213,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  list: {
+  pagerViewport: {
     flex: 1,
+    overflow: 'hidden',
   },
-  listContent: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  cardWrapper: {
-    marginBottom: spacing.md,
-  },
-  empty: {
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingTop: spacing.xxl * 2,
+  pagerRow: {
+    flex: 1,
+    flexDirection: 'row',
   },
   emptyTitle: {
     fontSize: 15,
