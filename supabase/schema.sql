@@ -73,3 +73,8 @@ create policy "tags_owner" on public.tags
 drop policy if exists "tasks_owner" on public.tasks;
 create policy "tasks_owner" on public.tasks
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- テーブル権限: RLSがあってもこれが無いと "permission denied" になる
+grant usage on schema public to anon, authenticated;
+grant all on public.statuses, public.tags, public.tasks to authenticated;
+grant select on public.statuses, public.tags, public.tasks to anon;

@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Alert } from 'react-native';
 
 import { repository } from '../lib/storage';
 import type { BoardSnapshot, NewTaskInput, Status, Tag, Task, TaskPatch } from '../types/task';
@@ -56,6 +57,10 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       .then((loaded) => {
         if (alive.current) setSnapshot(loaded);
       })
+      .catch((err) => {
+        console.error(err);
+        Alert.alert('読み込みエラー', err instanceof Error ? err.message : 'データの読み込みに失敗しました。');
+      })
       .finally(() => {
         if (alive.current) setReady(true);
       });
@@ -65,8 +70,14 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const apply = useCallback(async (op: Promise<BoardSnapshot>) => {
-    const next = await op;
-    if (alive.current) setSnapshot(next);
+    try {
+      const next = await op;
+      if (alive.current) setSnapshot(next);
+    } catch (err) {
+      console.error(err);
+      Alert.alert('エラー', err instanceof Error ? err.message : '操作に失敗しました。');
+      throw err;
+    }
   }, []);
 
   const value = useMemo<BoardContextValue>(() => {

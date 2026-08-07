@@ -113,7 +113,9 @@ export function TaskDetailScreen({ navigation, route }: Props) {
         style: 'destructive',
         onPress: () => {
           setCommitting(true);
-          void deleteTask(task.id).then(() => navigation.goBack());
+          void deleteTask(task.id)
+            .then(() => navigation.goBack())
+            .catch(() => setCommitting(false));
         },
       },
     ]);
